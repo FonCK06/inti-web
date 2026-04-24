@@ -1,17 +1,11 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ reply: "Método no permitido" });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ reply: "Método no permitido" });
 
   const { message } = req.body;
   const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey) {
-    return res.status(500).json({ reply: "Error: No se encontró la API Key en Vercel." });
-  }
-
-  // HEMOS CAMBIADO v1beta POR v1 AQUÍ:
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Probamos con la ruta v1beta pero asegurándonos de que el nombre del modelo sea el correcto
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -19,7 +13,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: `Eres un experto profesor de matemáticas de colegio. Responde de forma clara y paso a paso en español: ${message}` }]
+          parts: [{ text: `Eres un profesor de matemáticas de secundaria. Responde a: ${message}` }]
         }]
       })
     });
@@ -27,13 +21,27 @@ export default async function handler(req, res) {
     const data = await response.json();
     
     if (data.error) {
-      return res.status(500).json({ reply: "Error de Google: " + data.error.message });
+      // Si falla la v1beta, intentamos la v1 automáticamente aquí mismo
+      const fallbackUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
+      const fallbackRes = await fetch(fallbackUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: message }] }]
+        })
+      });
+      const fallbackData = await fallbackRes.json();
+      
+      if (fallbackData.error) {
+        return res.status(500).json({ reply: "Error de Google: " + fallbackData.error.message });
+      }
+      return res.status(200).json({ reply: fallbackData.candidates[0].content.parts[0].text });
     }
 
     const botReply = data.candidates?.[0]?.content?.parts?.[0]?.text || "La IA no devolvió texto.";
     res.status(200).json({ reply: botReply });
 
   } catch (error) {
-    res.status(500).json({ reply: "Error de conexión con el servidor." });
+    res.status(500).json({ reply: "Error de conexión." });
   }
 }
