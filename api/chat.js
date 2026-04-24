@@ -20,6 +20,6 @@ export default async function handler(req, res) {
     
     res.status(200).json({ reply: botReply });
   } catch (error) {
-    res.status(500).json({ reply: "Error de conexión con la IA." });
+    res.status(500).json({ reply: "Error de conexión con la IA." }); 
   }
 }
