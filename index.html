@@ -98,28 +98,42 @@
         window.style.display = window.style.display === 'flex' ? 'none' : 'flex';
     }
 
-    function sendMessage() {
-        const input = document.getElementById('user-input');
-        const container = document.getElementById('chat-messages');
-        
-        if (input.value.trim() !== "") {
-            const userDiv = document.createElement('div');
-            userDiv.className = 'message user';
-            userDiv.innerText = input.value;
-            container.appendChild(userDiv);
+ async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const container = document.getElementById('chat-messages');
+    const messageText = input.value.trim();
+    
+    if (messageText !== "") {
+        // 1. Mostrar mensaje del usuario
+        const userDiv = document.createElement('div');
+        userDiv.className = 'message user';
+        userDiv.innerText = messageText;
+        container.appendChild(userDiv);
+        input.value = "";
+        container.scrollTop = container.scrollHeight;
 
-            setTimeout(() => {
-                const botDiv = document.createElement('div');
-                botDiv.className = 'message bot';
-                botDiv.innerText = "NO SÉ LEER JAJA. Pero sé que te llamas Alim, jujuuju";
-                container.appendChild(botDiv);
-                container.scrollTop = container.scrollHeight;
-            }, 1000);
-
-            input.value = "";
-            container.scrollTop = container.scrollHeight;
+        // 2. Llamar a la IA
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: messageText })
+            });
+            const data = await response.json();
+            
+            // 3. Mostrar respuesta de la IA
+            const botDiv = document.createElement('div');
+            botDiv.className = 'message bot';
+            botDiv.innerText = data.reply;
+            container.appendChild(botDiv);
+        } catch (error) {
+            console.error("Error:", error);
         }
+        container.scrollTop = container.scrollHeight;
     }
+}
+
+    
 </script>
 
 </body>
