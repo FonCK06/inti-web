@@ -6,8 +6,8 @@ export default async function handler(req, res) {
 
   if (!apiKey) return res.status(500).json({ reply: "Falta la API Key en Vercel." });
 
-  // URL corregida para llaves creadas en 2026
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Cambiamos a gemini-1.5-pro y versión v1 estable
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
 
   try {
     const response = await fetch(url, {
@@ -15,27 +15,27 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
-          parts: [{ text: `Eres un profesor de matemáticas. Responde a: ${message}` }]
+          parts: [{ text: `Eres un profesor de matemáticas. Responde de forma clara a: ${message}` }]
         }]
       })
     });
 
     const data = await response.json();
     
-    // Si esta URL falla, intentamos la v1beta automáticamente
+    // Si el modelo Pro también falla, intentamos una última ruta genérica
     if (data.error) {
-       const betaUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-       const betaRes = await fetch(betaUrl, {
+       const fallbackUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
+       const fallbackRes = await fetch(fallbackUrl, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ contents: [{ parts: [{ text: message }] }] })
        });
-       const betaData = await betaRes.json();
+       const fallbackData = await fallbackRes.json();
        
-       if (betaData.error) {
-         return res.status(500).json({ reply: "Error de Google: " + betaData.error.message });
+       if (fallbackData.error) {
+         return res.status(500).json({ reply: "Error de Google: " + fallbackData.error.message });
        }
-       return res.status(200).json({ reply: betaData.candidates[0].content.parts[0].text });
+       return res.status(200).json({ reply: fallbackData.candidates[0].content.parts[0].text });
     }
 
     const botReply = data.candidates[0].content.parts[0].text;
